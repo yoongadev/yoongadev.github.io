@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Fruit Snake</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none;-webkit-touch-callout:none;-webkit-overflow-scrolling:none;overscroll-behavior:none}
+body{background:#1a1a2e;font-family:'Comic Sans MS','Chalkboard SE','Arial Rounded MT Bold',sans-serif;user-select:none}
+canvas{display:block;width:100%!important;height:100%!important}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none}
+#score{position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;font-size:clamp(18px,4vw,28px);font-weight:bold;text-shadow:2px 2px 6px rgba(0,0,0,0.6);background:rgba(0,0,0,0.35);padding:clamp(4px,1.5vw,10px) clamp(12px,3vw,28px);border-radius:clamp(12px,2.5vw,24px);backdrop-filter:blur(4px);border:2px solid rgba(255,255,255,0.15);white-space:nowrap;z-index:10}
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);color:#fff;text-align:center;pointer-events:auto;z-index:20}
+.overlay h1{font-size:clamp(32px,8vw,64px);margin-bottom:clamp(6px,2vw,16px);text-shadow:3px 3px 8px rgba(0,0,0,0.5);letter-spacing:2px}
+.overlay p{font-size:clamp(16px,4vw,24px);margin:clamp(3px,1vw,8px) 0;opacity:0.9}
+.overlay .sub{font-size:clamp(13px,3vw,18px);opacity:0.7;margin-top:clamp(2px,0.8vw,6px)}
+#startScreen{display:flex}
+#gameOver{display:none}
+#loadingText{position:fixed;bottom:clamp(60px,15vh,120px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:clamp(14px,3vw,18px);z-index:30;text-align:center}
+#loadingText .dot{animation:dotPulse 1.4s infinite;opacity:0}
+#loadingText .dot:nth-child(2){animation-delay:0.2s}
+#loadingText .dot:nth-child(3){animation-delay:0.4s}
+@keyframes dotPulse{0%,60%,100%{opacity:0}30%{opacity:1}}
+#controls{position:fixed;bottom:clamp(12px,3vh,28px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:clamp(11px,2.5vw,16px);background:rgba(0,0,0,0.2);padding:clamp(4px,1vw,8px) clamp(10px,2.5vw,20px);border-radius:12px;white-space:nowrap;z-index:10;text-align:center;line-height:1.4}
+@media(max-width:600px){
+  #score{top:10px}
+  .overlay h1{margin-bottom:4px}
+  #controls{bottom:10px;max-width:90vw;white-space:normal}
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div id="score">Score: <span id="scoreText">0</span></div>
+  <div id="startScreen" class="overlay">
+    <h1>Fruit Snake</h1>
+    <p>Tap or swipe to start</p>
+    <p class="sub">Arrow Keys / WASD · Swipe to steer</p>
+    <div id="loadingText">
+      Loading<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+    </div>
+  </div>
+  <div id="gameOver" class="overlay">
+    <h1>Game Over</h1>
+    <p>Final Score: <span id="finalScore">0</span></p>
+    <p class="sub">Tap or press Space to restart</p>
+  </div>
+  <div id="errorDisplay" class="overlay" style="display:none;z-index:999;background:rgba(0,0,0,0.85)">
+    <h1 style="color:#ff5252">Failed to Load</h1>
+    <p id="errorMsg">Unable to load game assets from CDN</p>
+    <p class="sub">Check your connection and refresh</p>
+  </div>
+  <div id="controls">Arrow Keys / WASD · Swipe to steer</div>
+</div>
+
+<script>
+(function loadThree() {
+  var urls = [
+    'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js',
+    'https://unpkg.com/three@0.159.0/build/three.min.js'
+  ];
+  var tried = 0, timedOut = false;
+  var timeout = setTimeout(function() {
+    timedOut = true;
+    document.getElementById('loadingText').style.display = 'none';
+    document.getElementById('errorDisplay').style.display = 'flex';
+  }, 10000);
+
+  function tryNext() {
+    if (timedOut) return;
+    if (tried >= urls.length) {
+      clearTimeout(timeout);
+      document.getElementById('loadingText').style.display = 'none';
+      document.getElementById('errorDisplay').style.display = 'flex';
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = urls[tried++];
+    s.onload = function() { clearTimeout(timeout); document.getElementById('loadingText').style.display = 'none'; main(); };
+    s.onerror = tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+
+function main() {
+var THREE = window.THREE;
+
+const CONFIG = {
+  speed: 3.5, segmentSpacing: 0.6, headRadius: 0.65,
+  bodyRadius: 0.52, tailRadius: 0.28, rotationSpeed: 3.2,
+  initialSegments: 5, maxTrail: 5000, refField: 14
+};
+
+let fieldBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+let scaleFactor = 1;
+
+function makeGradientMap() {
+  var c = document.createElement('canvas');
+  c.width = 4; c.height = 1;
+  var ctx = c.getContext('2d');
+  ['#fff','#ccc','#888','#333'].forEach(function(s,i){ctx.fillStyle=s;ctx.fillRect(i,0,1,1)});
+  var t = new THREE.CanvasTexture(c);
+  t.minFilter = t.magFilter = THREE.NearestFilter;
+  return t;
+}
+var gradMap = makeGradientMap();
+function M(color) { return new THREE.MeshToonMaterial({ color: color, gradientMap: gradMap }); }
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7EC8E3);
+scene.fog = new THREE.Fog(0x7EC8E3, 25, 45);
+
+var frustumHalf = 12;
+var camInitAspect = innerWidth / innerHeight;
+var camera = new THREE.OrthographicCamera(
+  -frustumHalf * camInitAspect, frustumHalf * camInitAspect,
+  frustumHalf, -frustumHalf,
+  0.1, 100
+);
+camera.position.set(0, 25, 0);
+camera.up.set(0, 0, -1);
+camera.lookAt(0, 0, 0);
+camera.updateProjectionMatrix();
+
+function computeFieldBounds() {
+  var aspect = innerWidth / innerHeight;
+  var halfW = frustumHalf * aspect;
+  var halfH = frustumHalf;
+  fieldBounds.minX = -halfW;
+  fieldBounds.maxX = halfW;
+  fieldBounds.minZ = -halfH;
+  fieldBounds.maxZ = halfH;
+  scaleFactor = Math.min(halfW * 2, halfH * 2) / CONFIG.refField;
+}
+
+function resizeCamera() {
+  var aspect = innerWidth / innerHeight;
+  var halfW = frustumHalf * aspect;
+  camera.left = -halfW;
+  camera.right = halfW;
+  camera.top = frustumHalf;
+  camera.bottom = -frustumHalf;
+  camera.updateProjectionMatrix();
+}
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+document.body.prepend(renderer.domElement);
+
+var ambLight = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambLight);
+
+var dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(8, 25, 12);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 50;
+dirLight.shadow.camera.left = -15;
+dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 15;
+dirLight.shadow.camera.bottom = -15;
+scene.add(dirLight);
+
+var fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+fillLight.position.set(-8, 10, -10);
+scene.add(fillLight);
+
+var ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M(0xA5D6A7));
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.1;
+ground.receiveShadow = true;
+scene.add(ground);
+
+var wallMat = M(0xFF7043);
+var wallMeshes = [];
+for (var wi = 0; wi < 4; wi++) {
+  var wm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), wallMat);
+  wm.castShadow = true; wm.receiveShadow = true;
+  scene.add(wm);
+  wallMeshes.push(wm);
+}
+
+function S(v) { return v * scaleFactor; }
+
+function updateSceneBounds() {
+  computeFieldBounds();
+  scene.fog = new THREE.Fog(0x7EC8E3, S(25), S(45));
+  var w = fieldBounds.maxX - fieldBounds.minX;
+  var h = fieldBounds.maxZ - fieldBounds.minZ;
+  ground.geometry.dispose();
+  ground.geometry = new THREE.PlaneGeometry(w + 4, h + 4);
+  var wt = 0.15 * scaleFactor;
+  var wh = 0.5 * scaleFactor;
+  var mh = wh / 2;
+  wallMeshes[0].scale.set(w + wt * 2, wh, wt);
+  wallMeshes[0].position.set(0, mh, fieldBounds.maxZ + wt / 2);
+  wallMeshes[1].scale.set(w + wt * 2, wh, wt);
+  wallMeshes[1].position.set(0, mh, fieldBounds.minZ - wt / 2);
+  wallMeshes[2].scale.set(wt, wh, h);
+  wallMeshes[2].position.set(fieldBounds.minX - wt / 2, mh, 0);
+  wallMeshes[3].scale.set(wt, wh, h);
+  wallMeshes[3].position.set(fieldBounds.maxX + wt / 2, mh, 0);
+  var sc = Math.max(w, h) / 2 + 2;
+  dirLight.shadow.camera.left = -sc;
+  dirLight.shadow.camera.right = sc;
+  dirLight.shadow.camera.top = sc;
+  dirLight.shadow.camera.bottom = -sc;
+  dirLight.shadow.camera.updateProjectionMatrix();
+}
+updateSceneBounds();
+
+function Trail(maxLen) {
+  this.pts = [];
+  this.maxLen = maxLen || CONFIG.maxTrail;
+}
+Trail.prototype.add = function(p) {
+  this.pts.unshift(p.clone());
+  if (this.pts.length > this.maxLen) this.pts.length = this.maxLen;
+};
+Trail.prototype.getWithDir = function(distance) {
+  var pts = this.pts;
+  if (pts.length < 2) return { pos: pts[0] ? pts[0].clone() : new THREE.Vector3(), dir: new THREE.Vector3(0,0,1) };
+  var acc = 0;
+  for (var i = 0; i < pts.length - 1; i++) {
+    var seg = pts[i].distanceTo(pts[i+1]);
+    if (acc + seg >= distance) {
+      var t = (distance - acc) / seg;
+      var pos = new THREE.Vector3().lerpVectors(pts[i], pts[i+1], t);
+      var dir = new THREE.Vector3().subVectors(pts[i], pts[i+1]).normalize();
+      return { pos: pos, dir: dir };
+    }
+    acc += seg;
+  }
+  var d = new THREE.Vector3().subVectors(pts[pts.length - 2], pts[pts.length - 1]).normalize();
+  return { pos: pts[pts.length - 1].clone(), dir: d };
+};
+
+function segColor(i, baseHex) {
+  var c = new THREE.Color(baseHex);
+  return (i % 2 === 0 ? c.offsetHSL(0, 0, 0.08) : c.offsetHSL(0, 0, -0.08)).getHex();
+}
+
+function applySnakeColor(colorHex) {
+  gState.snakeColor = colorHex;
+  gState.head.children[0].material = M(colorHex);
+  for (var si = 0; si < gState.body.length; si++) {
+    gState.body[si].material = M(segColor(si, colorHex));
+  }
+}
+
+function createHead() {
+  var g = new THREE.Group();
+  var hr = S(CONFIG.headRadius);
+  var body = new THREE.Mesh(new THREE.SphereGeometry(hr, 18, 18), M(gState.snakeColor));
+  body.castShadow = true;
+  g.add(body);
+  var ew = M(0xFFFFFF), ep = M(0x222222);
+  for (var si = -1; si <= 1; si += 2) {
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(S(0.2), 12, 12), ew);
+    eye.position.set(si * S(0.32), hr * 0.32, hr * 0.82);
+    g.add(eye);
+    var pupil = new THREE.Mesh(new THREE.SphereGeometry(S(0.09), 8, 8), ep);
+    pupil.position.set(si * S(0.32), hr * 0.32, hr * 0.82 + S(0.08));
+    g.add(pupil);
+  }
+  return g;
+}
+
+function makeSeg(i, total) {
+  var t = total > 1 ? i / (total - 1) : 0;
+  var r = S(CONFIG.bodyRadius - (CONFIG.bodyRadius - CONFIG.tailRadius) * t);
+  var m = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 12), M(segColor(i, gState.snakeColor)));
+  m.castShadow = true;
+  return m;
+}
+
+var foodTypes = [
+  {
+    name: 'apple', color: 0xE53935,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 12, 12), M(0xE53935));
+      b.position.y = S(0.3); b.castShadow = true; g.add(b);
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.03), S(0.05), S(0.18)), M(0x5D4037));
+      st.position.set(0, S(0.68), 0); g.add(st);
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.16), S(0.08), S(0.01)), M(0x43A047));
+      lf.position.set(S(0.08), S(0.68), 0); lf.rotation.z = 0.5; g.add(lf);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'banana', color: 0xFFD600,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.42), 12, 12), M(0xFFD600));
+      b.scale.set(0.9, 0.42, 0.55);
+      b.position.set(0, S(0.3), 0); b.rotation.x = 0.4;
+      b.castShadow = true; g.add(b);
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0x795548));
+      tip.position.set(S(0.25), S(0.14), S(0.2)); g.add(tip);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'orange', color: 0xFF8F00,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.45), 12, 12), M(0xFF8F00));
+      b.position.y = S(0.3); b.castShadow = true; g.add(b);
+      var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.04), 6, 6), M(0xE65100));
+      dot.position.set(0, S(0.55), S(0.4)); g.add(dot);
+      var leaf = new THREE.Mesh(new THREE.BoxGeometry(S(0.12), S(0.06), S(0.01)), M(0x388E3C));
+      leaf.position.set(0, S(0.62), 0); leaf.rotation.z = 0.3; g.add(leaf);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'cherry', color: 0xD32F2F,
+    create: function(pos) {
+      var g = new THREE.Group();
+      for (var ci = 0; ci < 2; ci++) {
+        var off = ci === 0 ? -0.14 : 0.14;
+        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.22), 10, 10), M(0xD32F2F));
+        c.position.set(S(off), S(0.35), 0);
+        c.castShadow = true; g.add(c);
+      }
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.02), S(0.02), S(0.28)), M(0x4E342E));
+      st.position.set(0, S(0.55), 0); g.add(st);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'grape', color: 0x9C27B0,
+    create: function(pos) {
+      var g = new THREE.Group(), mat = M(0x9C27B0);
+      var offs = [[0,0.15,0],[0.13,0.08,0.1],[-0.13,0.08,0.1]];
+      for (var gi = 0; gi < 3; gi++) {
+        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.17), 8, 8), mat);
+        c.position.set(S(offs[gi][0]), S(offs[gi][1]), S(offs[gi][2]));
+        c.castShadow = true; g.add(c);
+      }
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.02), S(0.03), S(0.12)), M(0x5D4037));
+      st.position.set(0, S(0.32), 0); g.add(st);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'blueberry', color: 0x1976D2,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.28), 10, 10), M(0x1976D2));
+      b.position.y = S(0.3); b.castShadow = true; g.add(b);
+      var cap = new THREE.Mesh(new THREE.BoxGeometry(S(0.08), S(0.03), S(0.08)), M(0x37474F));
+      cap.position.set(0, S(0.46), 0); g.add(cap);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'strawberry', color: 0xE91E63,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.35), 10, 10), M(0xE91E63));
+      b.scale.set(0.9, 0.8, 0.85);
+      b.position.y = S(0.28); b.castShadow = true; g.add(b);
+      var cap = new THREE.Mesh(new THREE.BoxGeometry(S(0.14), S(0.04), S(0.14)), M(0x43A047));
+      cap.position.set(0, S(0.48), 0); g.add(cap);
+      var stem = new THREE.Mesh(new THREE.CylinderGeometry(S(0.01), S(0.015), S(0.08)), M(0x388E3C));
+      stem.position.set(0, S(0.54), 0); g.add(stem);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  },
+  {
+    name: 'peach', color: 0xFFAB91,
+    create: function(pos) {
+      var g = new THREE.Group();
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.4), 10, 10), M(0xFFAB91));
+      b.scale.set(0.95, 0.85, 0.9);
+      b.position.y = S(0.3); b.castShadow = true; g.add(b);
+      var leaf = new THREE.Mesh(new THREE.BoxGeometry(S(0.1), S(0.04), S(0.01)), M(0x43A047));
+      leaf.position.set(S(0.05), S(0.58), 0); leaf.rotation.z = 0.4; g.add(leaf);
+      g.position.copy(pos); g.position.y = S(0.3);
+      return g;
+    }
+  }
+];
+
+var gState = {
+  head: null, body: [], trail: new Trail(),
+  dir: new THREE.Vector3(0, 0, 1),
+  targetDir: new THREE.Vector3(0, 0, 1),
+  pos: new THREE.Vector3(0, 0.3, 0),
+  speed: CONFIG.speed, score: 0,
+  gameOver: false, started: false,
+  foods: [], particles: [], time: 0,
+  snakeColor: 0x43A047
+};
+var keys = { up: false, down: false, left: false, right: false };
+
+document.addEventListener('keydown', function(e) {
+  var k = e.key;
+  if (k === 'ArrowUp' || k === 'w' || k === 'W') { keys.up = true; e.preventDefault(); }
+  if (k === 'ArrowDown' || k === 's' || k === 'S') { keys.down = true; e.preventDefault(); }
+  if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keys.left = true; e.preventDefault(); }
+  if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.right = true; e.preventDefault(); }
+  if (k === ' ') { e.preventDefault(); if (gState.gameOver) restart(); }
+  if (!gState.started && !gState.gameOver && (keys.up || keys.down || keys.left || keys.right)) {
+    startGame();
+  }
+});
+document.addEventListener('keyup', function(e) {
+  var k = e.key;
+  if (k === 'ArrowUp' || k === 'w' || k === 'W') { keys.up = false; e.preventDefault(); }
+  if (k === 'ArrowDown' || k === 's' || k === 'S') { keys.down = false; e.preventDefault(); }
+  if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keys.left = false; e.preventDefault(); }
+  if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.right = false; e.preventDefault(); }
+});
+
+var touchStartX = 0, touchStartY = 0, touchActive = false;
+
+function handleTouchDir(dx, dy) {
+  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+  var dir = new THREE.Vector3();
+  if (Math.abs(dx) > Math.abs(dy)) {
+    dir.x = dx > 0 ? 1 : -1;
+  } else {
+    dir.z = dy > 0 ? 1 : -1;
+  }
+  if (dir.length() > 0) { dir.normalize(); gState.targetDir.copy(dir); }
+}
+
+document.addEventListener('touchstart', function(e) {
+  var t = e.touches[0];
+  touchActive = true;
+  if (gState.gameOver) restart();
+  else if (!gState.started) startGame();
+  handleTouchDir(t.clientX - innerWidth / 2, t.clientY - innerHeight / 2);
+}, { passive: true });
+
+document.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  if (!touchActive) return;
+  var t = e.touches[0];
+  handleTouchDir(t.clientX - innerWidth / 2, t.clientY - innerHeight / 2);
+}, { passive: false });
+
+document.addEventListener('touchend', function(){ touchActive = false; }, { passive: true });
+document.addEventListener('touchcancel', function(){ touchActive = false; }, { passive: true });
+
+function startGame() {
+  gState.started = true;
+  document.getElementById('startScreen').style.display = 'none';
+}
+
+function restart() {
+  gState.body.forEach(function(s){scene.remove(s)});
+  gState.body = [];
+  gState.foods.forEach(function(f){scene.remove(f.mesh)});
+  gState.foods = [];
+  gState.particles.forEach(function(p){scene.remove(p.mesh)});
+  gState.particles = [];
+
+  var cx = (fieldBounds.minX + fieldBounds.maxX) / 2;
+  var cz = (fieldBounds.minZ + fieldBounds.maxZ) / 2;
+  var sy = S(0.3);
+  gState.pos.set(cx, sy, cz);
+  gState.dir.set(0, 0, 1);
+  gState.targetDir.set(0, 0, 1);
+  gState.score = 0;
+  gState.gameOver = false;
+  gState.speed = CONFIG.speed * scaleFactor;
+  gState.snakeColor = 0x43A047;
+  gState.trail = new Trail();
+  gState.time = 0;
+
+  gState.head.position.set(cx, sy, cz);
+  gState.head.rotation.set(0, 0, 0);
+
+  var spacing = S(CONFIG.segmentSpacing);
+  var trailLen = (CONFIG.initialSegments + 3) * spacing;
+  var step = 0.08 * scaleFactor;
+  for (var z = -trailLen; z <= 0; z += step) {
+    gState.trail.add(new THREE.Vector3(cx, sy, cz + z));
+  }
+  for (var ri = 0; ri < CONFIG.initialSegments; ri++) {
+    var seg = makeSeg(ri, CONFIG.initialSegments);
+    seg.position.set(cx, sy, cz - (ri + 1) * spacing);
+    scene.add(seg);
+    gState.body.push(seg);
+  }
+  applySnakeColor(0x43A047);
+
+  gameInfo.foodsEaten = 0;
+  spawnFood();
+  document.getElementById('gameOver').style.display = 'none';
+  updateScore();
+}
+
+function spawnFood() {
+  var margin = S(2);
+  var rx = fieldBounds.maxX - fieldBounds.minX - margin * 2;
+  var rz = fieldBounds.maxZ - fieldBounds.minZ - margin * 2;
+  var pos, attempts = 0;
+  do {
+    pos = new THREE.Vector3(
+      fieldBounds.minX + margin + Math.random() * rx, 0,
+      fieldBounds.minZ + margin + Math.random() * rz
+    );
+    attempts++;
+  } while (attempts < 30 && gState.pos.distanceTo(pos) < S(3));
+
+  var cfg = foodTypes[Math.floor(Math.random() * foodTypes.length)];
+  var mesh = cfg.create(pos);
+  scene.add(mesh);
+  gState.foods.push({ mesh: mesh, pos: pos.clone(), color: cfg.color });
+}
+
+var gameInfo = { foodsEaten: 0 };
+
+function updateScore() {
+  document.getElementById('scoreText').textContent = gState.score;
+  document.getElementById('finalScore').textContent = gState.score;
+}
+
+function gameOver() {
+  gState.gameOver = true;
+  document.getElementById('gameOver').style.display = 'flex';
+}
+
+function spawnParticles(pos, color) {
+  for (var pi = 0; pi < 18; pi++) {
+    var s = S(0.04 + Math.random() * 0.1);
+    var m = new THREE.Mesh(new THREE.SphereGeometry(s, 6, 6), M(color));
+    m.position.copy(pos); m.position.y += S(0.3);
+    scene.add(m);
+    var vel = new THREE.Vector3(
+      (Math.random() - 0.5) * S(0.35),
+      Math.random() * S(0.25) + S(0.1),
+      (Math.random() - 0.5) * S(0.35)
+    );
+    gState.particles.push({ mesh: m, vel: vel, life: 1.0 });
+  }
+}
+
+function updateParticles(dt) {
+  for (var i = gState.particles.length - 1; i >= 0; i--) {
+    var p = gState.particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { scene.remove(p.mesh); gState.particles.splice(i, 1); continue; }
+    p.mesh.position.add(p.vel.clone().multiplyScalar(dt * 60));
+    p.vel.y -= 0.4 * dt;
+    p.mesh.scale.setScalar(Math.min(1, p.life * 2));
+  }
+}
+
+function update(dt) {
+  if (gState.gameOver || !gState.started) return;
+  gState.time += dt;
+
+  var td = new THREE.Vector3();
+  if (keys.up) td.z -= 1;
+  if (keys.down) td.z += 1;
+  if (keys.left) td.x -= 1;
+  if (keys.right) td.x += 1;
+  if (td.length() > 0) { td.normalize(); gState.targetDir.copy(td); }
+
+  var curAngle = Math.atan2(gState.dir.x, gState.dir.z);
+  var tgtAngle = Math.atan2(gState.targetDir.x, gState.targetDir.z);
+  var diff = tgtAngle - curAngle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  var newAngle = curAngle + Math.sign(diff) * Math.min(Math.abs(diff), CONFIG.rotationSpeed * dt);
+  gState.dir.set(Math.sin(newAngle), 0, Math.cos(newAngle));
+
+  var move = gState.speed * dt;
+  gState.pos.x += gState.dir.x * move;
+  gState.pos.z += gState.dir.z * move;
+  gState.pos.y = S(0.3);
+  gState.head.position.copy(gState.pos);
+  gState.head.lookAt(gState.pos.clone().add(gState.dir));
+  gState.trail.add(gState.pos.clone());
+
+  var spacing = S(CONFIG.segmentSpacing);
+  for (var bi = 0; bi < gState.body.length; bi++) {
+    var data = gState.trail.getWithDir((bi + 1) * spacing);
+    gState.body[bi].position.copy(data.pos);
+    if (data.dir.length() > 0.001) {
+      gState.body[bi].rotation.y = -Math.atan2(data.dir.x, data.dir.z);
+    }
+  }
+
+  if (gState.pos.x < fieldBounds.minX || gState.pos.x > fieldBounds.maxX ||
+      gState.pos.z < fieldBounds.minZ || gState.pos.z > fieldBounds.maxZ) {
+    gameOver(); return;
+  }
+
+  for (var si = 2; si < gState.body.length; si++) {
+    if (gState.pos.distanceTo(gState.body[si].position) < S(CONFIG.headRadius * 0.7)) {
+      gameOver(); return;
+    }
+  }
+
+  for (var fi = gState.foods.length - 1; fi >= 0; fi--) {
+    var f = gState.foods[fi];
+    var dx = gState.pos.x - f.pos.x, dz = gState.pos.z - f.pos.z;
+    if (dx * dx + dz * dz < S(1.0) * S(1.0)) {
+      scene.remove(f.mesh);
+      gState.foods.splice(fi, 1);
+      gState.score += 10;
+      gameInfo.foodsEaten++;
+      updateScore();
+      gState.speed = CONFIG.speed * scaleFactor + Math.min(gameInfo.foodsEaten * 0.02 * scaleFactor, S(4));
+
+      var seg = makeSeg(gState.body.length, gState.body.length + 1);
+      seg.position.copy(gState.body[gState.body.length - 1].position);
+      scene.add(seg);
+      gState.body.push(seg);
+
+      applySnakeColor(f.color);
+      spawnParticles(f.pos, f.color);
+      spawnFood();
+      break;
+    }
+  }
+
+  for (var fai = 0; fai < gState.foods.length; fai++) {
+    var ff = gState.foods[fai];
+    ff.mesh.rotation.y += dt * 2;
+    ff.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + ff.pos.x) * S(0.12);
+  }
+  updateParticles(dt);
+}
+
+var clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  var dt = Math.min(clock.getDelta(), 0.05);
+  if (gState.started && !gState.gameOver) {
+    update(dt);
+  } else if (gState.gameOver) {
+    gState.time += dt;
+    for (var gi = 0; gi < gState.foods.length; gi++) {
+      var gf = gState.foods[gi];
+      gf.mesh.rotation.y += dt * 1.5;
+      gf.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + gf.pos.x) * S(0.1);
+    }
+    updateParticles(dt);
+  }
+  renderer.render(scene, camera);
+}
+
+var cx = (fieldBounds.minX + fieldBounds.maxX) / 2;
+var cz = (fieldBounds.minZ + fieldBounds.maxZ) / 2;
+var sy = S(0.3);
+
+gState.head = createHead();
+gState.head.position.set(cx, sy, cz);
+scene.add(gState.head);
+
+var initSpacing = S(CONFIG.segmentSpacing);
+var initTrailLen = (CONFIG.initialSegments + 3) * initSpacing;
+var initStep = 0.08 * scaleFactor;
+for (var iz = -initTrailLen; iz <= 0; iz += initStep) {
+  gState.trail.add(new THREE.Vector3(cx, sy, cz + iz));
+}
+for (var ii = 0; ii < CONFIG.initialSegments; ii++) {
+  var seg = makeSeg(ii, CONFIG.initialSegments);
+  seg.position.set(cx, sy, cz - (ii + 1) * initSpacing);
+  scene.add(seg);
+  gState.body.push(seg);
+}
+
+gState.speed = CONFIG.speed * scaleFactor;
+gState.pos.set(cx, sy, cz);
+gState.dir.set(0, 0, 1);
+gState.targetDir.set(0, 0, 1);
+
+spawnFood();
+updateScore();
+
+window.addEventListener('resize', function() {
+  renderer.setSize(innerWidth, innerHeight);
+  resizeCamera();
+  updateSceneBounds();
+});
+
+animate();
+}
+</script>
+</body>
+</html>
