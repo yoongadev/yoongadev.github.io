@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Fruit Snake</title>
+<title>吃水果的蛇</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;touch-action:none;-webkit-touch-callout:none;-webkit-overflow-scrolling:none;overscroll-behavior:none}
@@ -24,11 +24,9 @@ canvas{display:block;width:100%!important;height:100%!important}
 #loadingText .dot:nth-child(2){animation-delay:0.2s}
 #loadingText .dot:nth-child(3){animation-delay:0.4s}
 @keyframes dotPulse{0%,60%,100%{opacity:0}30%{opacity:1}}
-#controls{position:fixed;bottom:clamp(12px,3vh,28px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:clamp(11px,2.5vw,16px);background:rgba(0,0,0,0.2);padding:clamp(4px,1vw,8px) clamp(10px,2.5vw,20px);border-radius:12px;white-space:nowrap;z-index:10;text-align:center;line-height:1.4}
 @media(max-width:600px){
   #score{top:10px}
   .overlay h1{margin-bottom:4px}
-  #controls{bottom:10px;max-width:90vw;white-space:normal}
 }
 #joystick{position:fixed;pointer-events:none;z-index:15;display:none}
 #joystickBase{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:3px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.06)}
@@ -38,26 +36,25 @@ canvas{display:block;width:100%!important;height:100%!important}
 <body>
 
 <div id="ui">
-  <div id="score">Score: <span id="scoreText">0</span></div>
+  <div id="score">分数: <span id="scoreText">0</span></div>
   <div id="startScreen" class="overlay">
-    <h1>Fruit Snake</h1>
-    <p>Tap or swipe to start</p>
-    <p class="sub">Arrow Keys / WASD · Swipe to steer</p>
+    <h1>吃水果的蛇</h1>
+    <p>点击或滑动开始游戏</p>
+    <p class="sub">键盘方向键 / WASD · 滑动摇杆控制</p>
     <div id="loadingText">
-      Loading<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+      加载中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
     </div>
   </div>
   <div id="gameOver" class="overlay">
-    <h1>Game Over</h1>
-    <p>Final Score: <span id="finalScore">0</span></p>
-    <p class="sub">Tap or press Space to restart</p>
+    <h1>游戏结束</h1>
+    <p>最终分数: <span id="finalScore">0</span></p>
+    <p class="sub">点击或按空格键重新开始</p>
   </div>
   <div id="errorDisplay" class="overlay" style="display:none;z-index:999;background:rgba(0,0,0,0.85)">
-    <h1 style="color:#ff5252">Failed to Load</h1>
-    <p id="errorMsg">Unable to load game assets from CDN</p>
-    <p class="sub">Check your connection and refresh</p>
+    <h1 style="color:#ff5252">加载失败</h1>
+    <p id="errorMsg">无法连接到 CDN 加载游戏资源</p>
+    <p class="sub">请检查网络连接后刷新页面</p>
   </div>
-  <div id="controls">Arrow Keys / WASD · Touch joystick to steer</div>
   <div id="joystick"><div id="joystickBase"></div><div id="joystickThumb"></div></div>
 </div>
 
@@ -95,8 +92,8 @@ function main() {
 var THREE = window.THREE;
 
 const CONFIG = {
-  speed: 3.5, segmentSpacing: 0.6, headRadius: 0.65,
-  bodyRadius: 0.52, tailRadius: 0.28, rotationSpeed: 3.2,
+  speed: 3.5, segmentSpacing: 0.22, headRadius: 0.24,
+  bodyRadius: 0.20, tailRadius: 0.13,   rotationSpeed: 18.0,
   initialSegments: 5, maxTrail: 5000, refField: 14
 };
 
@@ -180,7 +177,28 @@ var fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
 fillLight.position.set(-8, 10, -10);
 scene.add(fillLight);
 
-var ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M(0xA5D6A7));
+function makeGridTexture() {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = '#DDDDDD';
+  ctx.lineWidth = 1.5;
+  var step = 16;
+  for (var x = 0; x <= 128; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 128); ctx.stroke();
+  }
+  for (var y = 0; y <= 128; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(128, y); ctx.stroke();
+  }
+  var t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 1);
+  return t;
+}
+var groundMat = new THREE.MeshStandardMaterial({ map: makeGridTexture() });
+var ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.1;
 ground.receiveShadow = true;
@@ -190,7 +208,7 @@ var wallMat = M(0xFF7043);
 var wallMeshes = [];
 for (var wi = 0; wi < 4; wi++) {
   var wm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), wallMat);
-  wm.castShadow = true; wm.receiveShadow = true;
+  wm.castShadow = false; wm.receiveShadow = true;
   scene.add(wm);
   wallMeshes.push(wm);
 }
@@ -204,6 +222,8 @@ function updateSceneBounds() {
   var h = fieldBounds.maxZ - fieldBounds.minZ;
   ground.geometry.dispose();
   ground.geometry = new THREE.PlaneGeometry(w + 4, h + 4);
+  var cells = 40;
+  ground.material.map.repeat.set(cells / 8, cells / 8 * (h + 4) / (w + 4));
   var wt = 0.15 * scaleFactor;
   var wh = 0.5 * scaleFactor;
   var mh = wh / 2;
@@ -263,6 +283,18 @@ function applySnakeColor(colorHex) {
   }
 }
 
+var MAX_GROWTH = 60;
+var MAX_SIZE_BONUS = 0.8;
+
+function updateGrowthScale() {
+  var g = Math.min(gState.growth, MAX_GROWTH) / MAX_GROWTH;
+  var s = 1 + g * MAX_SIZE_BONUS;
+  gState.head.scale.set(s, s, s);
+  for (var gi = 0; gi < gState.body.length; gi++) {
+    gState.body[gi].scale.set(s, s, s);
+  }
+}
+
 function createHead() {
   var g = new THREE.Group();
   var hr = S(CONFIG.headRadius);
@@ -271,12 +303,18 @@ function createHead() {
   g.add(body);
   var ew = M(0xFFFFFF), ep = M(0x222222);
   for (var si = -1; si <= 1; si += 2) {
-    var eye = new THREE.Mesh(new THREE.SphereGeometry(S(0.2), 12, 12), ew);
-    eye.position.set(si * S(0.32), hr * 0.32, hr * 0.82);
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.38, 14, 14), ew);
+    eye.position.set(si * hr * 0.70, hr * 0.60, hr * 0.55);
     g.add(eye);
-    var pupil = new THREE.Mesh(new THREE.SphereGeometry(S(0.09), 8, 8), ep);
-    pupil.position.set(si * S(0.32), hr * 0.32, hr * 0.82 + S(0.08));
+    var pupil = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.20, 10, 10), ep);
+    pupil.position.set(si * hr * 0.62, hr * 0.60 + hr * 0.38, hr * 0.55);
     g.add(pupil);
+    var shine1 = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.09, 8, 8), ew);
+    shine1.position.set(si * hr * 0.62 + si * hr * 0.08, hr * 0.60 + hr * 0.38 + hr * 0.08, hr * 0.55 + hr * 0.04);
+    g.add(shine1);
+    var shine2 = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.04, 6, 6), ew);
+    shine2.position.set(si * hr * 0.62 - si * hr * 0.06, hr * 0.60 + hr * 0.38 + hr * 0.03, hr * 0.55 - hr * 0.05);
+    g.add(shine2);
   }
   return g;
 }
@@ -293,13 +331,15 @@ var foodTypes = [
   {
     name: 'apple', color: 0xE53935,
     create: function(pos) {
-      var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 12, 12), M(0xE53935));
-      b.position.y = S(0.3); b.castShadow = true; g.add(b);
-      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.03), S(0.05), S(0.18)), M(0x5D4037));
-      st.position.set(0, S(0.68), 0); g.add(st);
-      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.16), S(0.08), S(0.01)), M(0x43A047));
-      lf.position.set(S(0.08), S(0.68), 0); lf.rotation.z = 0.5; g.add(lf);
+      var g = new THREE.Group(), s = scaleFactor;
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.50), 16, 16), M(0xE53935));
+      b.scale.set(1, 0.92, 0.92); b.position.y = S(0.30); b.castShadow = true; g.add(b);
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.025), S(0.04), S(0.22)), M(0x5D4037));
+      st.position.set(0, S(0.70), 0); g.add(st);
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.20), S(0.06), S(0.02)), M(0x388E3C));
+      lf.position.set(S(0.08), S(0.70), 0); lf.rotation.z = 0.7; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.10), 8, 8), M(0xFFCDD2));
+      sh.position.set(S(0.18), S(0.44), S(0.35)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -308,12 +348,20 @@ var foodTypes = [
     name: 'banana', color: 0xFFD600,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.42), 12, 12), M(0xFFD600));
-      b.scale.set(0.9, 0.42, 0.55);
-      b.position.set(0, S(0.3), 0); b.rotation.x = 0.4;
-      b.castShadow = true; g.add(b);
-      var tip = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0x795548));
-      tip.position.set(S(0.25), S(0.14), S(0.2)); g.add(tip);
+      for (var bi = 0; bi < 5; bi++) {
+        var t = bi / 4;
+        var r = new THREE.Mesh(new THREE.SphereGeometry(S(0.22 - t * 0.04), 10, 10), M(0xFFD600));
+        r.scale.set(0.9, 0.50, 0.50);
+        r.position.set(S(-0.20 + t * 0.40), S(0.36 - t * 0.12), S(0.05 - t * 0.08));
+        r.rotation.x = 0.5 - t * 1.0;
+        r.castShadow = true; g.add(r);
+      }
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(S(0.04), 6, 6), M(0x795548));
+      tip.position.set(S(0.22), S(0.22), S(-0.02)); g.add(tip);
+      var stem = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0x795548));
+      stem.position.set(S(-0.22), S(0.38), S(0.04)); g.add(stem);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xFFF9C4));
+      sh.position.set(S(0.05), S(0.34), S(0.18)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -322,12 +370,14 @@ var foodTypes = [
     name: 'orange', color: 0xFF8F00,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.45), 12, 12), M(0xFF8F00));
-      b.position.y = S(0.3); b.castShadow = true; g.add(b);
-      var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.04), 6, 6), M(0xE65100));
-      dot.position.set(0, S(0.55), S(0.4)); g.add(dot);
-      var leaf = new THREE.Mesh(new THREE.BoxGeometry(S(0.12), S(0.06), S(0.01)), M(0x388E3C));
-      leaf.position.set(0, S(0.62), 0); leaf.rotation.z = 0.3; g.add(leaf);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), M(0xFF8F00));
+      b.position.y = S(0.30); b.castShadow = true; g.add(b);
+      var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.045), 6, 6), M(0xE65100));
+      dot.position.set(0, S(0.58), S(0.38)); g.add(dot);
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.16), S(0.05), S(0.015)), M(0x388E3C));
+      lf.position.set(0, S(0.64), 0); lf.rotation.z = 0.3; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.10), 8, 8), M(0xFFE0B2));
+      sh.position.set(S(0.18), S(0.44), S(0.36)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -337,13 +387,16 @@ var foodTypes = [
     create: function(pos) {
       var g = new THREE.Group();
       for (var ci = 0; ci < 2; ci++) {
-        var off = ci === 0 ? -0.14 : 0.14;
-        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.22), 10, 10), M(0xD32F2F));
-        c.position.set(S(off), S(0.35), 0);
-        c.castShadow = true; g.add(c);
+        var off = ci === 0 ? -0.16 : 0.16;
+        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.24), 12, 12), M(0xD32F2F));
+        c.position.set(S(off), S(0.35), 0); c.castShadow = true; g.add(c);
+        var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xEF9A9A));
+        sh.position.set(S(off) + S(0.09), S(0.44), S(0.14)); g.add(sh);
       }
-      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.02), S(0.02), S(0.28)), M(0x4E342E));
-      st.position.set(0, S(0.55), 0); g.add(st);
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.35)), M(0x4E342E));
+      st.position.set(0, S(0.60), 0); st.rotation.z = 0.15; g.add(st);
+      var st2 = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.30)), M(0x4E342E));
+      st2.position.set(0, S(0.58), 0); st2.rotation.z = -0.15; g.add(st2);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -352,14 +405,17 @@ var foodTypes = [
     name: 'grape', color: 0x9C27B0,
     create: function(pos) {
       var g = new THREE.Group(), mat = M(0x9C27B0);
-      var offs = [[0,0.15,0],[0.13,0.08,0.1],[-0.13,0.08,0.1]];
-      for (var gi = 0; gi < 3; gi++) {
-        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.17), 8, 8), mat);
-        c.position.set(S(offs[gi][0]), S(offs[gi][1]), S(offs[gi][2]));
-        c.castShadow = true; g.add(c);
+      var offs = [[0,0.28,0],[0.16,0.20,0.06],[-0.16,0.20,0.06],[0.08,0.14,-0.12],[-0.08,0.14,-0.12],[0,0.12,0.16]];
+      for (var gi = 0; gi < 6; gi++) {
+        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.14), 8, 8), mat);
+        c.position.set(S(offs[gi][0]), S(offs[gi][1]), S(offs[gi][2])); c.castShadow = true; g.add(c);
+        if (gi < 3) {
+          var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0xCE93D8));
+          sh.position.set(S(offs[gi][0]) + S(0.04), S(offs[gi][1]) + S(0.03), S(offs[gi][2]) + S(0.06)); g.add(sh);
+        }
       }
-      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.02), S(0.03), S(0.12)), M(0x5D4037));
-      st.position.set(0, S(0.32), 0); g.add(st);
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.025), S(0.12)), M(0x5D4037));
+      st.position.set(0, S(0.42), 0); g.add(st);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -368,10 +424,15 @@ var foodTypes = [
     name: 'blueberry', color: 0x1976D2,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.28), 10, 10), M(0x1976D2));
-      b.position.y = S(0.3); b.castShadow = true; g.add(b);
-      var cap = new THREE.Mesh(new THREE.BoxGeometry(S(0.08), S(0.03), S(0.08)), M(0x37474F));
-      cap.position.set(0, S(0.46), 0); g.add(cap);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.32), 10, 10), M(0x1976D2));
+      b.position.y = S(0.30); b.castShadow = true; g.add(b);
+      for (var bi = 0; bi < 5; bi++) {
+        var a = bi / 5 * Math.PI * 2;
+        var t = new THREE.Mesh(new THREE.BoxGeometry(S(0.025), S(0.015), S(0.025)), M(0x0D47A1));
+        t.position.set(Math.sin(a) * S(0.07), S(0.48), Math.cos(a) * S(0.07)); g.add(t);
+      }
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.055), 6, 6), M(0x90CAF9));
+      sh.position.set(S(0.10), S(0.38), S(0.14)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -380,13 +441,22 @@ var foodTypes = [
     name: 'strawberry', color: 0xE91E63,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.35), 10, 10), M(0xE91E63));
-      b.scale.set(0.9, 0.8, 0.85);
-      b.position.y = S(0.28); b.castShadow = true; g.add(b);
-      var cap = new THREE.Mesh(new THREE.BoxGeometry(S(0.14), S(0.04), S(0.14)), M(0x43A047));
-      cap.position.set(0, S(0.48), 0); g.add(cap);
-      var stem = new THREE.Mesh(new THREE.CylinderGeometry(S(0.01), S(0.015), S(0.08)), M(0x388E3C));
-      stem.position.set(0, S(0.54), 0); g.add(stem);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.38), 12, 12), M(0xE91E63));
+      b.scale.set(0.85, 0.90, 0.82); b.position.y = S(0.26); b.castShadow = true; g.add(b);
+      for (var si = 0; si < 10; si++) {
+        var a = Math.random() * Math.PI * 2, r = Math.random() * 0.55 + 0.05;
+        var sd = new THREE.Mesh(new THREE.SphereGeometry(S(0.012), 4, 4), M(0xFFCDD2));
+        sd.position.set(Math.sin(a) * S(r * 0.32), S(0.12) + Math.cos(a * 0.8 + r) * S(0.22), Math.cos(a) * S(r * 0.32));
+        g.add(sd);
+      }
+      for (var li = 0; li < 5; li++) {
+        var a = li / 5 * Math.PI * 2;
+        var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.07), S(0.025), S(0.025)), M(0x43A047));
+        lf.position.set(Math.sin(a) * S(0.12), S(0.50), Math.cos(a) * S(0.12)); lf.rotation.y = -a; lf.rotation.x = 0.4;
+        g.add(lf);
+      }
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xF8BBD0));
+      sh.position.set(S(0.12), S(0.36), S(0.22)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -395,11 +465,16 @@ var foodTypes = [
     name: 'peach', color: 0xFFAB91,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.4), 10, 10), M(0xFFAB91));
-      b.scale.set(0.95, 0.85, 0.9);
-      b.position.y = S(0.3); b.castShadow = true; g.add(b);
-      var leaf = new THREE.Mesh(new THREE.BoxGeometry(S(0.1), S(0.04), S(0.01)), M(0x43A047));
-      leaf.position.set(S(0.05), S(0.58), 0); leaf.rotation.z = 0.4; g.add(leaf);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.44), 14, 14), M(0xFFAB91));
+      b.scale.set(0.95, 0.80, 0.88); b.position.y = S(0.30); b.castShadow = true; g.add(b);
+      var crease = new THREE.Mesh(new THREE.BoxGeometry(S(0.015), S(0.28), S(0.32)), M(0xFF8A65));
+      crease.position.set(0, S(0.30), S(0.02)); g.add(crease);
+      var blush = new THREE.Mesh(new THREE.SphereGeometry(S(0.14), 8, 8), M(0xFF7043));
+      blush.position.set(S(0.18), S(0.22), S(0.28)); blush.scale.set(0.7, 0.4, 0.5); g.add(blush);
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.14), S(0.04), S(0.012)), M(0x43A047));
+      lf.position.set(S(0.06), S(0.60), 0); lf.rotation.z = 0.6; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.08), 6, 6), M(0xFFCCBC));
+      sh.position.set(S(0.16), S(0.42), S(0.32)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -414,7 +489,7 @@ var gState = {
   speed: CONFIG.speed, score: 0,
   gameOver: false, started: false,
   foods: [], particles: [], time: 0,
-  snakeColor: 0x43A047
+  snakeColor: 0x43A047, growth: 0
 };
 var keys = { up: false, down: false, left: false, right: false };
 
@@ -491,7 +566,7 @@ function restart() {
 
   var cx = (fieldBounds.minX + fieldBounds.maxX) / 2;
   var cz = (fieldBounds.minZ + fieldBounds.maxZ) / 2;
-  var sy = S(0.3);
+  var sy = S(0.6);
   gState.pos.set(cx, sy, cz);
   gState.dir.set(0, 0, 1);
   gState.targetDir.set(0, 0, 1);
@@ -499,6 +574,7 @@ function restart() {
   gState.gameOver = false;
   gState.speed = CONFIG.speed * scaleFactor;
   gState.snakeColor = 0x43A047;
+  gState.growth = 0;
   gState.trail = new Trail();
   gState.time = 0;
 
@@ -518,6 +594,7 @@ function restart() {
     gState.body.push(seg);
   }
   applySnakeColor(0x43A047);
+  updateGrowthScale();
 
   gameInfo.foodsEaten = 0;
   spawnFood();
@@ -598,13 +675,14 @@ function update(dt) {
   var diff = tgtAngle - curAngle;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  var newAngle = curAngle + Math.sign(diff) * Math.min(Math.abs(diff), CONFIG.rotationSpeed * dt);
+  var rotSpeed = CONFIG.rotationSpeed * (gState.speed / (CONFIG.speed * scaleFactor));
+  var newAngle = curAngle + Math.sign(diff) * Math.min(Math.abs(diff), rotSpeed * dt);
   gState.dir.set(Math.sin(newAngle), 0, Math.cos(newAngle));
 
   var move = gState.speed * dt;
   gState.pos.x += gState.dir.x * move;
   gState.pos.z += gState.dir.z * move;
-  gState.pos.y = S(0.3);
+  gState.pos.y = S(0.6);
   gState.head.position.copy(gState.pos);
   gState.head.lookAt(gState.pos.clone().add(gState.dir));
   gState.trail.add(gState.pos.clone());
@@ -638,14 +716,15 @@ function update(dt) {
       gState.score += 10;
       gameInfo.foodsEaten++;
       updateScore();
-      gState.speed = CONFIG.speed * scaleFactor + Math.min(gameInfo.foodsEaten * 0.02 * scaleFactor, S(4));
+      gState.speed = CONFIG.speed * scaleFactor * (1 + Math.min(gameInfo.foodsEaten, 100) * 0.08);
 
       var seg = makeSeg(gState.body.length, gState.body.length + 1);
       seg.position.copy(gState.body[gState.body.length - 1].position);
       scene.add(seg);
       gState.body.push(seg);
-
       applySnakeColor(f.color);
+      gState.growth = Math.min(gState.growth + 1, MAX_GROWTH);
+      updateGrowthScale();
       spawnParticles(f.pos, f.color);
       spawnFood();
       break;
@@ -681,7 +760,7 @@ function animate() {
 
 var cx = (fieldBounds.minX + fieldBounds.maxX) / 2;
 var cz = (fieldBounds.minZ + fieldBounds.maxZ) / 2;
-var sy = S(0.3);
+var sy = S(0.6);
 
 gState.head = createHead();
 gState.head.position.set(cx, sy, cz);
