@@ -114,7 +114,7 @@ var gradMap = makeGradientMap();
 function M(color) { return new THREE.MeshToonMaterial({ color: color, gradientMap: gradMap }); }
 
 var scene = new THREE.Scene();
-scene.background = new THREE.Color(0x7EC8E3);
+scene.background = new THREE.Color(0x8BC34A);
 
 var frustumHalf = 12;
 var camInitAspect = innerWidth / innerHeight;
@@ -175,11 +175,11 @@ scene.add(fillLight);
 
 function makeGridTexture() {
   var c = document.createElement('canvas');
-  c.width = 128; c.height = 128;
+  c.width = 256; c.height = 256;
   var ctx = c.getContext('2d');
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#8BC34A';
   ctx.fillRect(0, 0, 256, 256);
-  ctx.strokeStyle = '#000000';
+  ctx.strokeStyle = '#558B2F';
   ctx.lineWidth = 1;
   var step = 16;
   for (var x = 0; x <= 256; x += step) {
@@ -191,6 +191,8 @@ function makeGridTexture() {
   var t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1, 1);
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
   return t;
 }
 var groundMat = new THREE.MeshStandardMaterial({ map: makeGridTexture() });
@@ -305,15 +307,26 @@ var foodTypes = [
   {
     name: 'apple', color: 0xE53935,
     create: function(pos) {
-      var g = new THREE.Group(), s = scaleFactor;
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.50), 16, 16), M(0xE53935));
+      var g = new THREE.Group();
+      function mkTex() {
+        var c = document.createElement('canvas'), s = 128;
+        c.width = s; c.height = s; var ctx = c.getContext('2d');
+        ctx.fillStyle = '#E53935'; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#C62828'; ctx.beginPath(); ctx.arc(90, 60, 40, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(98, 50, 15, 0, Math.PI * 2); ctx.fill();
+        for (var i = 0; i < 20; i++) {
+          ctx.fillStyle = 'rgba(183,28,28,' + (Math.random() * 0.15) + ')';
+          ctx.beginPath(); ctx.arc(Math.random() * s, Math.random() * s, 1 + Math.random() * 3, 0, Math.PI * 2); ctx.fill();
+        }
+        return new THREE.CanvasTexture(c);
+      }
+      var mat = new THREE.MeshToonMaterial({ color: 0xE53935, map: mkTex(), gradientMap: gradMap });
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), mat);
       b.scale.set(1, 0.92, 0.92); b.position.y = S(0.30); b.castShadow = true; g.add(b);
       var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.025), S(0.04), S(0.22)), M(0x5D4037));
       st.position.set(0, S(0.70), 0); g.add(st);
       var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.20), S(0.06), S(0.02)), M(0x388E3C));
       lf.position.set(S(0.08), S(0.70), 0); lf.rotation.z = 0.7; g.add(lf);
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.10), 8, 8), M(0xFFCDD2));
-      sh.position.set(S(0.18), S(0.44), S(0.35)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -334,8 +347,6 @@ var foodTypes = [
       tip.position.set(S(0.22), S(0.22), S(-0.02)); g.add(tip);
       var stem = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0x795548));
       stem.position.set(S(-0.22), S(0.38), S(0.04)); g.add(stem);
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xFFF9C4));
-      sh.position.set(S(0.05), S(0.34), S(0.18)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -344,14 +355,25 @@ var foodTypes = [
     name: 'orange', color: 0xFF8F00,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), M(0xFF8F00));
+      function mkTex() {
+        var c = document.createElement('canvas'), s = 128;
+        c.width = s; c.height = s; var ctx = c.getContext('2d');
+        ctx.fillStyle = '#FF8F00'; ctx.fillRect(0, 0, s, s);
+        for (var i = 0; i < 80; i++) {
+          var x = Math.random() * s, y = Math.random() * s;
+          ctx.fillStyle = 'rgba(230,81,0,' + (Math.random() * 0.12) + ')';
+          ctx.beginPath(); ctx.arc(x, y, 2 + Math.random() * 4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#FFE0B2'; ctx.beginPath(); ctx.arc(98, 42, 14, 0, Math.PI * 2); ctx.fill();
+        return new THREE.CanvasTexture(c);
+      }
+      var mat = new THREE.MeshToonMaterial({ color: 0xFF8F00, map: mkTex(), gradientMap: gradMap });
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), mat);
       b.position.y = S(0.30); b.castShadow = true; g.add(b);
       var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.045), 6, 6), M(0xE65100));
       dot.position.set(0, S(0.58), S(0.38)); g.add(dot);
       var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.16), S(0.05), S(0.015)), M(0x388E3C));
       lf.position.set(0, S(0.64), 0); lf.rotation.z = 0.3; g.add(lf);
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.10), 8, 8), M(0xFFE0B2));
-      sh.position.set(S(0.18), S(0.44), S(0.36)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -383,10 +405,6 @@ var foodTypes = [
       for (var gi = 0; gi < 6; gi++) {
         var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.14), 8, 8), mat);
         c.position.set(S(offs[gi][0]), S(offs[gi][1]), S(offs[gi][2])); c.castShadow = true; g.add(c);
-        if (gi < 3) {
-          var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0xCE93D8));
-          sh.position.set(S(offs[gi][0]) + S(0.04), S(offs[gi][1]) + S(0.03), S(offs[gi][2]) + S(0.06)); g.add(sh);
-        }
       }
       var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.025), S(0.12)), M(0x5D4037));
       st.position.set(0, S(0.42), 0); g.add(st);
@@ -398,15 +416,23 @@ var foodTypes = [
     name: 'blueberry', color: 0x1976D2,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.32), 10, 10), M(0x1976D2));
+      function mkTex() {
+        var c = document.createElement('canvas'), s = 128;
+        c.width = s; c.height = s; var ctx = c.getContext('2d');
+        ctx.fillStyle = '#1976D2'; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#0D47A1'; ctx.beginPath(); ctx.arc(60, 70, 35, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#90CAF9'; ctx.beginPath(); ctx.arc(88, 50, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(85, 47, 4, 0, Math.PI * 2); ctx.fill();
+        return new THREE.CanvasTexture(c);
+      }
+      var mat = new THREE.MeshToonMaterial({ color: 0x1976D2, map: mkTex(), gradientMap: gradMap });
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.32), 12, 12), mat);
       b.position.y = S(0.30); b.castShadow = true; g.add(b);
       for (var bi = 0; bi < 5; bi++) {
         var a = bi / 5 * Math.PI * 2;
         var t = new THREE.Mesh(new THREE.BoxGeometry(S(0.025), S(0.015), S(0.025)), M(0x0D47A1));
         t.position.set(Math.sin(a) * S(0.07), S(0.48), Math.cos(a) * S(0.07)); g.add(t);
       }
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.055), 6, 6), M(0x90CAF9));
-      sh.position.set(S(0.10), S(0.38), S(0.14)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -415,22 +441,28 @@ var foodTypes = [
     name: 'strawberry', color: 0xE91E63,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.38), 12, 12), M(0xE91E63));
-      b.scale.set(0.85, 0.90, 0.82); b.position.y = S(0.26); b.castShadow = true; g.add(b);
-      for (var si = 0; si < 10; si++) {
-        var a = Math.random() * Math.PI * 2, r = Math.random() * 0.55 + 0.05;
-        var sd = new THREE.Mesh(new THREE.SphereGeometry(S(0.012), 4, 4), M(0xFFCDD2));
-        sd.position.set(Math.sin(a) * S(r * 0.32), S(0.12) + Math.cos(a * 0.8 + r) * S(0.22), Math.cos(a) * S(r * 0.32));
-        g.add(sd);
+      function mkTex() {
+        var c = document.createElement('canvas'), s = 128;
+        c.width = s; c.height = s; var ctx = c.getContext('2d');
+        ctx.fillStyle = '#E91E63'; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#C2185B'; ctx.beginPath(); ctx.ellipse(50, 70, 50, 40, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#F8BBD0'; ctx.beginPath(); ctx.arc(88, 50, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(85, 47, 5, 0, Math.PI * 2); ctx.fill();
+        for (var i = 0; i < 25; i++) {
+          ctx.fillStyle = '#FFCDD2'; ctx.beginPath();
+          ctx.arc(20 + Math.random() * 90, 20 + Math.random() * 90, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        return new THREE.CanvasTexture(c);
       }
+      var mat = new THREE.MeshToonMaterial({ color: 0xE91E63, map: mkTex(), gradientMap: gradMap });
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.38), 12, 12), mat);
+      b.scale.set(0.85, 0.90, 0.82); b.position.y = S(0.26); b.castShadow = true; g.add(b);
       for (var li = 0; li < 5; li++) {
         var a = li / 5 * Math.PI * 2;
         var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.07), S(0.025), S(0.025)), M(0x43A047));
         lf.position.set(Math.sin(a) * S(0.12), S(0.50), Math.cos(a) * S(0.12)); lf.rotation.y = -a; lf.rotation.x = 0.4;
         g.add(lf);
       }
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xF8BBD0));
-      sh.position.set(S(0.12), S(0.36), S(0.22)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -439,16 +471,22 @@ var foodTypes = [
     name: 'peach', color: 0xFFAB91,
     create: function(pos) {
       var g = new THREE.Group();
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.44), 14, 14), M(0xFFAB91));
+      function mkTex() {
+        var c = document.createElement('canvas'), s = 128;
+        c.width = s; c.height = s; var ctx = c.getContext('2d');
+        ctx.fillStyle = '#FFAB91'; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#FF7043'; ctx.beginPath(); ctx.ellipse(80, 60, 45, 35, 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFCCBC'; ctx.beginPath(); ctx.arc(95, 45, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(92, 42, 5, 0, Math.PI * 2); ctx.fill();
+        return new THREE.CanvasTexture(c);
+      }
+      var mat = new THREE.MeshToonMaterial({ color: 0xFFAB91, map: mkTex(), gradientMap: gradMap });
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.44), 14, 14), mat);
       b.scale.set(0.95, 0.80, 0.88); b.position.y = S(0.30); b.castShadow = true; g.add(b);
       var crease = new THREE.Mesh(new THREE.BoxGeometry(S(0.015), S(0.28), S(0.32)), M(0xFF8A65));
       crease.position.set(0, S(0.30), S(0.02)); g.add(crease);
-      var blush = new THREE.Mesh(new THREE.SphereGeometry(S(0.14), 8, 8), M(0xFF7043));
-      blush.position.set(S(0.18), S(0.22), S(0.28)); blush.scale.set(0.7, 0.4, 0.5); g.add(blush);
       var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.14), S(0.04), S(0.012)), M(0x43A047));
       lf.position.set(S(0.06), S(0.60), 0); lf.rotation.z = 0.6; g.add(lf);
-      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.08), 6, 6), M(0xFFCCBC));
-      sh.position.set(S(0.16), S(0.42), S(0.32)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -589,7 +627,7 @@ function spawnFood() {
       gState.pos.z - vh + margin + Math.random() * (vh * 2 - margin * 2)
     );
     attempts++;
-  } while (attempts < 30 && gState.pos.distanceTo(pos) < S(3));
+  } while (attempts < 30 && (gState.pos.distanceTo(pos) < S(3) || gState.foods.some(function(f){return pos.distanceTo(f.pos) < S(2.5)})));
 
   var cfg = foodTypes[Math.floor(Math.random() * foodTypes.length)];
   var mesh = cfg.create(pos);
