@@ -92,8 +92,8 @@ function main() {
 var THREE = window.THREE;
 
 const CONFIG = {
-  speed: 3.5, segmentSpacing: 0.22, headRadius: 0.24,
-  bodyRadius: 0.20, tailRadius: 0.13,   rotationSpeed: 18.0,
+  speed: 3.5, segmentSpacing: 0.32, headRadius: 0.36,
+  bodyRadius: 0.30, tailRadius: 0.20, rotationSpeed: 18.0,
   initialSegments: 5, maxTrail: 5000, refField: 14
 };
 
@@ -283,7 +283,7 @@ function applySnakeColor(colorHex) {
   }
 }
 
-var MAX_GROWTH = 60;
+var MAX_GROWTH = 15;
 var MAX_SIZE_BONUS = 0.8;
 
 function updateGrowthScale() {
