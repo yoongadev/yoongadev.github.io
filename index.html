@@ -30,6 +30,9 @@ canvas{display:block;width:100%!important;height:100%!important}
   .overlay h1{margin-bottom:4px}
   #controls{bottom:10px;max-width:90vw;white-space:normal}
 }
+#joystick{position:fixed;pointer-events:none;z-index:15;display:none}
+#joystickBase{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:3px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.06)}
+#joystickThumb{position:absolute;left:50%;top:50%;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.45);transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>
@@ -54,7 +57,8 @@ canvas{display:block;width:100%!important;height:100%!important}
     <p id="errorMsg">Unable to load game assets from CDN</p>
     <p class="sub">Check your connection and refresh</p>
   </div>
-  <div id="controls">Arrow Keys / WASD · Swipe to steer</div>
+  <div id="controls">Arrow Keys / WASD · Touch joystick to steer</div>
+  <div id="joystick"><div id="joystickBase"></div><div id="joystickThumb"></div></div>
 </div>
 
 <script>
@@ -433,16 +437,13 @@ document.addEventListener('keyup', function(e) {
   if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.right = false; e.preventDefault(); }
 });
 
-var touchStartX = 0, touchStartY = 0, touchActive = false;
+var touchActive = false;
+var jCenterX = 0, jCenterY = 0;
+var jRadius = 55;
 
 function handleTouchDir(dx, dy) {
-  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-  var dir = new THREE.Vector3();
-  if (Math.abs(dx) > Math.abs(dy)) {
-    dir.x = dx > 0 ? 1 : -1;
-  } else {
-    dir.z = dy > 0 ? 1 : -1;
-  }
+  if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+  var dir = new THREE.Vector3(dx, 0, dy);
   if (dir.length() > 0) { dir.normalize(); gState.targetDir.copy(dir); }
 }
 
@@ -451,18 +452,29 @@ document.addEventListener('touchstart', function(e) {
   touchActive = true;
   if (gState.gameOver) restart();
   else if (!gState.started) startGame();
-  handleTouchDir(t.clientX - innerWidth / 2, t.clientY - innerHeight / 2);
+  jCenterX = t.clientX; jCenterY = t.clientY;
+  var j = document.getElementById('joystick');
+  j.style.left = (jCenterX - 60) + 'px';
+  j.style.top = (jCenterY - 60) + 'px';
+  j.style.display = 'block';
+  document.getElementById('joystickThumb').style.transform = 'translate(-50%,-50%)';
 }, { passive: true });
 
 document.addEventListener('touchmove', function(e) {
   e.preventDefault();
   if (!touchActive) return;
   var t = e.touches[0];
-  handleTouchDir(t.clientX - innerWidth / 2, t.clientY - innerHeight / 2);
+  var dx = t.clientX - jCenterX;
+  var dy = t.clientY - jCenterY;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var tx = dx, ty = dy;
+  if (dist > jRadius) { tx = dx / dist * jRadius; ty = dy / dist * jRadius; }
+  document.getElementById('joystickThumb').style.transform = 'translate(-50%,-50%) translate(' + tx + 'px,' + ty + 'px)';
+  handleTouchDir(dx, dy);
 }, { passive: false });
 
-document.addEventListener('touchend', function(){ touchActive = false; }, { passive: true });
-document.addEventListener('touchcancel', function(){ touchActive = false; }, { passive: true });
+document.addEventListener('touchend', function(){ touchActive = false; document.getElementById('joystick').style.display = 'none'; }, { passive: true });
+document.addEventListener('touchcancel', function(){ touchActive = false; document.getElementById('joystick').style.display = 'none'; }, { passive: true });
 
 function startGame() {
   gState.started = true;
