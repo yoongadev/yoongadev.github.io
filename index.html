@@ -308,25 +308,16 @@ var foodTypes = [
     name: 'apple', color: 0xE53935,
     create: function(pos) {
       var g = new THREE.Group();
-      function mkTex() {
-        var c = document.createElement('canvas'), s = 128;
-        c.width = s; c.height = s; var ctx = c.getContext('2d');
-        ctx.fillStyle = '#E53935'; ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = '#C62828'; ctx.beginPath(); ctx.arc(90, 60, 40, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(98, 50, 15, 0, Math.PI * 2); ctx.fill();
-        for (var i = 0; i < 20; i++) {
-          ctx.fillStyle = 'rgba(183,28,28,' + (Math.random() * 0.15) + ')';
-          ctx.beginPath(); ctx.arc(Math.random() * s, Math.random() * s, 1 + Math.random() * 3, 0, Math.PI * 2); ctx.fill();
-        }
-        return new THREE.CanvasTexture(c);
-      }
-      var mat = new THREE.MeshToonMaterial({ color: 0xE53935, map: mkTex(), gradientMap: gradMap });
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), mat);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.50), 16, 16), M(0xE53935));
       b.scale.set(1, 0.92, 0.92); b.position.y = S(0.30); b.castShadow = true; g.add(b);
+      var dent = new THREE.Mesh(new THREE.SphereGeometry(S(0.08), 8, 8), M(0xC62828));
+      dent.position.set(0, S(0.60), S(0.30)); dent.scale.set(0.7, 0.3, 0.5); g.add(dent);
       var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.025), S(0.04), S(0.22)), M(0x5D4037));
       st.position.set(0, S(0.70), 0); g.add(st);
-      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.20), S(0.06), S(0.02)), M(0x388E3C));
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.18), S(0.06), S(0.02)), M(0x388E3C));
       lf.position.set(S(0.08), S(0.70), 0); lf.rotation.z = 0.7; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.09), 8, 8), M(0xFFCDD2));
+      sh.position.set(S(0.20), S(0.45), S(0.30)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -335,18 +326,22 @@ var foodTypes = [
     name: 'banana', color: 0xFFD600,
     create: function(pos) {
       var g = new THREE.Group();
-      for (var bi = 0; bi < 5; bi++) {
-        var t = bi / 4;
-        var r = new THREE.Mesh(new THREE.SphereGeometry(S(0.22 - t * 0.04), 10, 10), M(0xFFD600));
-        r.scale.set(0.9, 0.50, 0.50);
-        r.position.set(S(-0.20 + t * 0.40), S(0.36 - t * 0.12), S(0.05 - t * 0.08));
-        r.rotation.x = 0.5 - t * 1.0;
+      var segments = 7;
+      for (var bi = 0; bi < segments; bi++) {
+        var t = bi / (segments - 1);
+        var rad = S(0.24 - t * 0.06);
+        var r = new THREE.Mesh(new THREE.SphereGeometry(rad, 10, 10), M(0xFFD600));
+        r.scale.set(0.9, 0.48, 0.48);
+        r.position.set(S(-0.28 + t * 0.56), S(0.38 - t * 0.20), S(0.04 - t * 0.08));
+        r.rotation.x = 0.6 - t * 1.2;
         r.castShadow = true; g.add(r);
       }
-      var tip = new THREE.Mesh(new THREE.SphereGeometry(S(0.04), 6, 6), M(0x795548));
-      tip.position.set(S(0.22), S(0.22), S(-0.02)); g.add(tip);
-      var stem = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0x795548));
-      stem.position.set(S(-0.22), S(0.38), S(0.04)); g.add(stem);
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(S(0.035), 6, 6), M(0x795548));
+      tip.position.set(S(0.30), S(0.16), S(-0.03)); g.add(tip);
+      var stem = new THREE.Mesh(new THREE.SphereGeometry(S(0.03), 6, 6), M(0x795548));
+      stem.position.set(S(-0.30), S(0.40), S(0.04)); g.add(stem);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.05), 6, 6), M(0xFFF9C4));
+      sh.position.set(S(0.02), S(0.30), S(0.16)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -355,25 +350,20 @@ var foodTypes = [
     name: 'orange', color: 0xFF8F00,
     create: function(pos) {
       var g = new THREE.Group();
-      function mkTex() {
-        var c = document.createElement('canvas'), s = 128;
-        c.width = s; c.height = s; var ctx = c.getContext('2d');
-        ctx.fillStyle = '#FF8F00'; ctx.fillRect(0, 0, s, s);
-        for (var i = 0; i < 80; i++) {
-          var x = Math.random() * s, y = Math.random() * s;
-          ctx.fillStyle = 'rgba(230,81,0,' + (Math.random() * 0.12) + ')';
-          ctx.beginPath(); ctx.arc(x, y, 2 + Math.random() * 4, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.fillStyle = '#FFE0B2'; ctx.beginPath(); ctx.arc(98, 42, 14, 0, Math.PI * 2); ctx.fill();
-        return new THREE.CanvasTexture(c);
-      }
-      var mat = new THREE.MeshToonMaterial({ color: 0xFF8F00, map: mkTex(), gradientMap: gradMap });
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), mat);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.48), 16, 16), M(0xFF8F00));
       b.position.y = S(0.30); b.castShadow = true; g.add(b);
-      var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.045), 6, 6), M(0xE65100));
-      dot.position.set(0, S(0.58), S(0.38)); g.add(dot);
-      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.16), S(0.05), S(0.015)), M(0x388E3C));
-      lf.position.set(0, S(0.64), 0); lf.rotation.z = 0.3; g.add(lf);
+      for (var oi = 0; oi < 15; oi++) {
+        var bump = new THREE.Mesh(new THREE.SphereGeometry(S(0.025 + Math.random() * 0.02), 6, 6), M(0xE65100));
+        var a1 = Math.random() * Math.PI * 2, a2 = Math.random() * Math.PI * 0.8 + 0.1;
+        bump.position.set(Math.sin(a1) * Math.sin(a2) * S(0.40), S(0.3) + Math.cos(a2) * S(0.40), Math.cos(a1) * Math.sin(a2) * S(0.40));
+        g.add(bump);
+      }
+      var dot = new THREE.Mesh(new THREE.SphereGeometry(S(0.04), 6, 6), M(0xE65100));
+      dot.position.set(0, S(0.56), S(0.38)); g.add(dot);
+      var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.15), S(0.05), S(0.015)), M(0x388E3C));
+      lf.position.set(0, S(0.63), 0); lf.rotation.z = 0.3; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.09), 8, 8), M(0xFFE0B2));
+      sh.position.set(S(0.18), S(0.44), S(0.34)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -383,15 +373,15 @@ var foodTypes = [
     create: function(pos) {
       var g = new THREE.Group();
       for (var ci = 0; ci < 2; ci++) {
-        var off = ci === 0 ? -0.16 : 0.16;
+        var off = ci === 0 ? -0.17 : 0.17;
         var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.24), 12, 12), M(0xD32F2F));
         c.position.set(S(off), S(0.35), 0); c.castShadow = true; g.add(c);
         var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xEF9A9A));
         sh.position.set(S(off) + S(0.09), S(0.44), S(0.14)); g.add(sh);
       }
-      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.35)), M(0x4E342E));
+      var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.38)), M(0x4E342E));
       st.position.set(0, S(0.60), 0); st.rotation.z = 0.15; g.add(st);
-      var st2 = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.30)), M(0x4E342E));
+      var st2 = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.02), S(0.32)), M(0x4E342E));
       st2.position.set(0, S(0.58), 0); st2.rotation.z = -0.15; g.add(st2);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
@@ -401,10 +391,14 @@ var foodTypes = [
     name: 'grape', color: 0x9C27B0,
     create: function(pos) {
       var g = new THREE.Group(), mat = M(0x9C27B0);
-      var offs = [[0,0.28,0],[0.16,0.20,0.06],[-0.16,0.20,0.06],[0.08,0.14,-0.12],[-0.08,0.14,-0.12],[0,0.12,0.16]];
-      for (var gi = 0; gi < 6; gi++) {
-        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.14), 8, 8), mat);
+      var offs = [[0,0.30,0],[0.18,0.22,0.08],[-0.18,0.22,0.08],[0.10,0.14,-0.14],[-0.10,0.14,-0.14],[0,0.10,0.18],[0.12,0.06,-0.06],[-0.12,0.06,-0.06]];
+      for (var gi = 0; gi < offs.length; gi++) {
+        var c = new THREE.Mesh(new THREE.SphereGeometry(S(0.13), 8, 8), mat);
         c.position.set(S(offs[gi][0]), S(offs[gi][1]), S(offs[gi][2])); c.castShadow = true; g.add(c);
+      }
+      for (var hi = 0; hi < 3; hi++) {
+        var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.03), 6, 6), M(0xCE93D8));
+        sh.position.set(S(offs[hi][0]) + S(0.04), S(offs[hi][1]) + S(0.03), S(offs[hi][2]) + S(0.05)); g.add(sh);
       }
       var st = new THREE.Mesh(new THREE.CylinderGeometry(S(0.015), S(0.025), S(0.12)), M(0x5D4037));
       st.position.set(0, S(0.42), 0); g.add(st);
@@ -416,23 +410,15 @@ var foodTypes = [
     name: 'blueberry', color: 0x1976D2,
     create: function(pos) {
       var g = new THREE.Group();
-      function mkTex() {
-        var c = document.createElement('canvas'), s = 128;
-        c.width = s; c.height = s; var ctx = c.getContext('2d');
-        ctx.fillStyle = '#1976D2'; ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = '#0D47A1'; ctx.beginPath(); ctx.arc(60, 70, 35, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#90CAF9'; ctx.beginPath(); ctx.arc(88, 50, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(85, 47, 4, 0, Math.PI * 2); ctx.fill();
-        return new THREE.CanvasTexture(c);
-      }
-      var mat = new THREE.MeshToonMaterial({ color: 0x1976D2, map: mkTex(), gradientMap: gradMap });
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.32), 12, 12), mat);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.32), 12, 12), M(0x1976D2));
       b.position.y = S(0.30); b.castShadow = true; g.add(b);
       for (var bi = 0; bi < 5; bi++) {
         var a = bi / 5 * Math.PI * 2;
         var t = new THREE.Mesh(new THREE.BoxGeometry(S(0.025), S(0.015), S(0.025)), M(0x0D47A1));
-        t.position.set(Math.sin(a) * S(0.07), S(0.48), Math.cos(a) * S(0.07)); g.add(t);
+        t.position.set(Math.sin(a) * S(0.07), S(0.47), Math.cos(a) * S(0.07)); g.add(t);
       }
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.05), 6, 6), M(0x90CAF9));
+      sh.position.set(S(0.10), S(0.38), S(0.14)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -441,28 +427,22 @@ var foodTypes = [
     name: 'strawberry', color: 0xE91E63,
     create: function(pos) {
       var g = new THREE.Group();
-      function mkTex() {
-        var c = document.createElement('canvas'), s = 128;
-        c.width = s; c.height = s; var ctx = c.getContext('2d');
-        ctx.fillStyle = '#E91E63'; ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = '#C2185B'; ctx.beginPath(); ctx.ellipse(50, 70, 50, 40, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#F8BBD0'; ctx.beginPath(); ctx.arc(88, 50, 14, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(85, 47, 5, 0, Math.PI * 2); ctx.fill();
-        for (var i = 0; i < 25; i++) {
-          ctx.fillStyle = '#FFCDD2'; ctx.beginPath();
-          ctx.arc(20 + Math.random() * 90, 20 + Math.random() * 90, 1.5, 0, Math.PI * 2); ctx.fill();
-        }
-        return new THREE.CanvasTexture(c);
-      }
-      var mat = new THREE.MeshToonMaterial({ color: 0xE91E63, map: mkTex(), gradientMap: gradMap });
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.38), 12, 12), mat);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.38), 12, 12), M(0xE91E63));
       b.scale.set(0.85, 0.90, 0.82); b.position.y = S(0.26); b.castShadow = true; g.add(b);
+      for (var si = 0; si < 12; si++) {
+        var a = Math.random() * Math.PI * 2, r = Math.random() * 0.6 + 0.05;
+        var sd = new THREE.Mesh(new THREE.SphereGeometry(S(0.012), 4, 4), M(0xFFCDD2));
+        sd.position.set(Math.sin(a) * S(r * 0.32), S(0.12) + Math.cos(a * 0.8 + r) * S(0.22), Math.cos(a) * S(r * 0.32));
+        g.add(sd);
+      }
       for (var li = 0; li < 5; li++) {
         var a = li / 5 * Math.PI * 2;
         var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.07), S(0.025), S(0.025)), M(0x43A047));
         lf.position.set(Math.sin(a) * S(0.12), S(0.50), Math.cos(a) * S(0.12)); lf.rotation.y = -a; lf.rotation.x = 0.4;
         g.add(lf);
       }
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.06), 6, 6), M(0xF8BBD0));
+      sh.position.set(S(0.12), S(0.36), S(0.22)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -471,22 +451,16 @@ var foodTypes = [
     name: 'peach', color: 0xFFAB91,
     create: function(pos) {
       var g = new THREE.Group();
-      function mkTex() {
-        var c = document.createElement('canvas'), s = 128;
-        c.width = s; c.height = s; var ctx = c.getContext('2d');
-        ctx.fillStyle = '#FFAB91'; ctx.fillRect(0, 0, s, s);
-        ctx.fillStyle = '#FF7043'; ctx.beginPath(); ctx.ellipse(80, 60, 45, 35, 0.3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFCCBC'; ctx.beginPath(); ctx.arc(95, 45, 16, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(92, 42, 5, 0, Math.PI * 2); ctx.fill();
-        return new THREE.CanvasTexture(c);
-      }
-      var mat = new THREE.MeshToonMaterial({ color: 0xFFAB91, map: mkTex(), gradientMap: gradMap });
-      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.44), 14, 14), mat);
+      var b = new THREE.Mesh(new THREE.SphereGeometry(S(0.44), 14, 14), M(0xFFAB91));
       b.scale.set(0.95, 0.80, 0.88); b.position.y = S(0.30); b.castShadow = true; g.add(b);
-      var crease = new THREE.Mesh(new THREE.BoxGeometry(S(0.015), S(0.28), S(0.32)), M(0xFF8A65));
+      var crease = new THREE.Mesh(new THREE.BoxGeometry(S(0.015), S(0.28), S(0.34)), M(0xFF8A65));
       crease.position.set(0, S(0.30), S(0.02)); g.add(crease);
+      var blush = new THREE.Mesh(new THREE.SphereGeometry(S(0.12), 8, 8), M(0xFF7043));
+      blush.position.set(S(0.20), S(0.22), S(0.28)); blush.scale.set(0.8, 0.4, 0.5); g.add(blush);
       var lf = new THREE.Mesh(new THREE.BoxGeometry(S(0.14), S(0.04), S(0.012)), M(0x43A047));
       lf.position.set(S(0.06), S(0.60), 0); lf.rotation.z = 0.6; g.add(lf);
+      var sh = new THREE.Mesh(new THREE.SphereGeometry(S(0.08), 6, 6), M(0xFFCCBC));
+      sh.position.set(S(0.18), S(0.42), S(0.30)); g.add(sh);
       g.position.copy(pos); g.position.y = S(0.3);
       return g;
     }
@@ -656,7 +630,7 @@ function gameOver() {
 }
 
 function spawnParticles(pos, color) {
-  for (var pi = 0; pi < 18; pi++) {
+  for (var pi = 0; pi < 6; pi++) {
     var s = S(0.04 + Math.random() * 0.1);
     var m = new THREE.Mesh(new THREE.SphereGeometry(s, 6, 6), M(color));
     m.position.copy(pos); m.position.y += S(0.3);
@@ -743,7 +717,7 @@ function update(dt) {
       gState.foods.splice(fi, 1);
       gState.score += 10;
       gameInfo.foodsEaten++;
-      gState.speed = CONFIG.speed * scaleFactor * (1 + Math.min(gameInfo.foodsEaten, 500) * 0.04);
+      gState.speed = CONFIG.speed * scaleFactor * (1 + Math.min(gameInfo.foodsEaten, 500) * 0.02);
       updateScore();
 
       var seg = makeSeg(gState.body.length, gState.body.length + 1);
@@ -761,8 +735,7 @@ function update(dt) {
 
   for (var fai = 0; fai < gState.foods.length; fai++) {
     var ff = gState.foods[fai];
-    ff.mesh.rotation.y += dt * 2;
-    ff.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + ff.pos.x) * S(0.12);
+    ff.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + ff.pos.x) * S(0.25);
   }
   var aspect = innerWidth / innerHeight;
   var distLimit = frustumHalf * Math.max(aspect, 1) * 1.5;
@@ -787,8 +760,7 @@ function animate() {
     gState.time += dt;
     for (var gi = 0; gi < gState.foods.length; gi++) {
       var gf = gState.foods[gi];
-      gf.mesh.rotation.y += dt * 1.5;
-      gf.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + gf.pos.x) * S(0.1);
+    gf.mesh.position.y = S(0.3) + Math.sin(gState.time * 3 + gf.pos.x) * S(0.2);
     }
     updateParticles(dt);
     var aspect = innerWidth / innerHeight;
